@@ -1,0 +1,37 @@
+{
+    "listeners": {
+        "*:8300": {
+            "pass": "routes"
+        }
+    },
+    "routes": [
+        {
+            "match": {
+                "uri": "/blog/*"
+            },
+            "action": {
+                "pass": "applications/blog"
+            }
+        },
+        {
+            "match": {
+                "uri": "/cpp/*"
+            },
+            "action": {
+                "pass": "applications/cpp"
+            }
+        }
+    ],
+    "applications": {
+        "blog": {
+            "type": "python",
+            "path": "/opt/unit/applications/blog",
+            "module": "index"
+        },
+        "cpp": {
+            "type": "external",
+            "working_directory" : "/opt/unit/applications/cpp",
+            "executable" : "cpp_chat_app"
+        }
+    }
+}

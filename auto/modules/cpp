@@ -1,0 +1,84 @@
+# date : 2020-07-30
+
+shift
+
+if [ ! -f $NXT_AUTOCONF_DATA ]; then
+   echo
+   echo Please run common $0 before configuring module \"$nxt_module\".
+   echo
+   exit 1
+fi
+
+. $NXT_AUTOCONF_DATA
+
+NXT_CPP=cpp
+NXT_CPP_MODULE=${NXT_CPP_MODULE=${NXT_CPP##*/}}
+
+$echo "configuring Cpp module"
+$echo "configuring Cpp module ..." >> $NXT_AUTOCONF_ERR
+
+if grep ^$NXT_CPP_MODULE: $NXT_MAKEFILE 2>&1 > /dev/null; then
+    $echo
+    $echo $0: error: duplicate \"$NXT_CPP_MODULE\" module configured.
+    $echo
+    exit 1;
+fi
+
+NXT_CPP_MODULE_SRCS=" \
+    src/nxt_cpp_cgi.c \
+"
+
+
+# The cpp module object files.
+
+nxt_objs=$NXT_BUILD_DIR/src/nxt_unit.o
+
+for nxt_src in $NXT_CPP_MODULE_SRCS; do
+
+    nxt_obj=${nxt_src%.c}-$NXT_CPP_MODULE.o
+    nxt_dep=${nxt_src%.c}-$NXT_CPP_MODULE.dep
+    nxt_objs="$nxt_objs $NXT_BUILD_DIR/$nxt_obj"
+
+    cat << END >> $NXT_MAKEFILE
+
+$NXT_BUILD_DIR/$nxt_obj:	$nxt_src $NXT_VERSION_H
+	\$(CC) -c \$(CFLAGS) \$(NXT_INCS)  \\
+	-o $NXT_BUILD_DIR/$nxt_obj $nxt_src
+
+-include $NXT_BUILD_DIR/$nxt_dep
+
+END
+
+done
+
+# 编译相关
+cat << END >> $NXT_MAKEFILE
+
+.PHONY: ${NXT_CPP_MODULE}
+.PHONY: ${NXT_CPP_MODULE}-install
+.PHONY: ${NXT_CPP_MODULE}-uninstall
+
+all: ${NXT_CPP_MODULE}
+
+${NXT_CPP_MODULE}:	$NXT_BUILD_DIR/${NXT_CPP_MODULE}.unit.so
+
+$NXT_BUILD_DIR/${NXT_CPP_MODULE}.unit.so:	$nxt_objs
+	\$(NXT_MODULE_LINK) -o $NXT_BUILD_DIR/${NXT_CPP_MODULE}.unit.so \\
+	$nxt_objs $NXT_LD_OPT
+
+
+install: ${NXT_CPP_MODULE}-install
+
+${NXT_CPP_MODULE}-install: ${NXT_CPP_MODULE} install-check
+	install -d \$(DESTDIR)$NXT_MODULES
+	install -p $NXT_BUILD_DIR/${NXT_CPP_MODULE}.unit.so \\
+		\$(DESTDIR)$NXT_MODULES/
+
+
+uninstall: ${NXT_CPP_MODULE}-uninstall
+
+${NXT_CPP_MODULE}-uninstall:
+	rm -f \$(DESTDIR)$NXT_MODULES/${NXT_CPP_MODULE}.unit.so
+	@rmdir -p \$(DESTDIR)$NXT_MODULES 2>/dev/null || true
+
+END
